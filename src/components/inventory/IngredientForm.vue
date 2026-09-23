@@ -1,6 +1,6 @@
 <script setup>
-import { reactive, computed } from 'vue'
-import { CATEGORIES, UNITS, LOCATIONS } from '@/constants'
+import { reactive, ref, computed, watch } from 'vue'
+import { CATEGORIES, UNITS, LOCATIONS, getDefaultShelfLifeDays } from '@/constants'
 import { toDateKey, expiryDateKey } from '@/utils/date'
 import PhotoUpload from '@/components/common/PhotoUpload.vue'
 
@@ -15,15 +15,40 @@ const form = reactive({
   quantity: props.initial?.quantity ?? 1,
   unit: props.initial?.unit || '个',
   purchaseDate: props.initial?.purchaseDate || toDateKey(),
-  shelfLifeDays: props.initial?.shelfLifeDays ?? 7,
+  shelfLifeDays: props.initial?.shelfLifeDays ?? getDefaultShelfLifeDays(props.initial?.category || '蔬菜'),
   location: props.initial?.location || '冷藏',
   note: props.initial?.note || '',
   photo: props.initial?.photo || '',
 })
 
+// 用户是否手动改过保质期：改过后切换类别不再自动覆盖。
+// 编辑已有食材时，其已保存的值视为自定义值，同样不被切换类别覆盖。
+const shelfLifeTouched = ref(!!props.initial)
+
+const suggestedDays = computed(() => getDefaultShelfLifeDays(form.category))
+const showSuggestion = computed(() => Number(form.shelfLifeDays) !== suggestedDays.value)
+
 const expiry = computed(() =>
   form.purchaseDate ? expiryDateKey(form.purchaseDate, Number(form.shelfLifeDays)) : '',
 )
+
+// 切换类别时带出该类别的常见保质期，用户手动调整后不再覆盖
+watch(
+  () => form.category,
+  (category) => {
+    if (shelfLifeTouched.value) return
+    form.shelfLifeDays = getDefaultShelfLifeDays(category)
+  },
+)
+
+function onShelfLifeInput() {
+  shelfLifeTouched.value = true
+}
+
+function applySuggestion() {
+  form.shelfLifeDays = suggestedDays.value
+  shelfLifeTouched.value = false
+}
 
 function submit() {
   if (!form.name.trim()) return
@@ -78,7 +103,20 @@ function submit() {
       </div>
       <div class="field">
         <label>保质期（天）</label>
-        <input v-model.number="form.shelfLifeDays" type="number" min="1" />
+        <input
+          v-model.number="form.shelfLifeDays"
+          type="number"
+          min="1"
+          @input="onShelfLifeInput"
+        />
+        <button
+          v-if="showSuggestion"
+          type="button"
+          class="shelf-suggestion"
+          @click="applySuggestion"
+        >
+          {{ form.category }}建议 {{ suggestedDays }} 天，点击采用
+        </button>
       </div>
     </div>
 
@@ -147,6 +185,18 @@ textarea:focus {
   border-radius: 8px;
   color: var(--warn);
   font-weight: 600;
+}
+.shelf-suggestion {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+}
+.shelf-suggestion:hover {
+  text-decoration: underline;
 }
 .actions {
   display: flex;

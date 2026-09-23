@@ -2,19 +2,20 @@ import { defineStore } from 'pinia'
 import { read, write } from '@/utils/storage'
 import { uid } from '@/utils/id'
 import { remainingDays } from '@/utils/date'
-import { EXPIRY_WARN_DAYS } from '@/constants'
+import { EXPIRY_WARN_DAYS, getDefaultShelfLifeDays } from '@/constants'
 
 const STORAGE_KEY = 'inventory'
 
 function createItem(data) {
+  const category = data.category || '蔬菜'
   return {
     id: uid('ing'),
     name: '',
-    category: '蔬菜',
+    category,
     quantity: 1,
     unit: '个',
     purchaseDate: '',
-    shelfLifeDays: 7,
+    shelfLifeDays: getDefaultShelfLifeDays(category),
     location: '冷藏',
     note: '',
     photo: '',
@@ -95,7 +96,7 @@ export const useInventoryStore = defineStore('inventory', {
     },
 
     // 入库（增加数量），不存在则新建
-    restock({ name, unit, quantity, category = '其他', location = '常温', shelfLifeDays = 7 }) {
+    restock({ name, unit, quantity, category = '其他', location = '常温', shelfLifeDays }) {
       const exist = this.items.find(
         (i) => i.name === name && i.unit === unit,
       )
@@ -108,7 +109,7 @@ export const useInventoryStore = defineStore('inventory', {
           quantity,
           category,
           location,
-          shelfLifeDays,
+          shelfLifeDays: shelfLifeDays ?? getDefaultShelfLifeDays(category),
           purchaseDate: new Date().toISOString().slice(0, 10),
         })
       }
