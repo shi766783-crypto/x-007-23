@@ -75,5 +75,25 @@ export const FOOD_GROUPS = {
 // 保质期预警阈值（天）
 export const EXPIRY_WARN_DAYS = 3
 
+// 各类别常见保质期建议（天），参考家庭冷藏/常温储存经验
+export const CATEGORY_SHELF_LIFE_DAYS = {
+  蔬菜: 5,
+  肉类: 3,
+  水产: 2,
+  蛋奶: 30,
+  主食: 30,
+  调料: 180,
+  干货: 180,
+  其他: 7,
+}
+
+// 未匹配类别时的默认保质期（天）
+export const DEFAULT_SHELF_LIFE_DAYS = 7
+
+// 按类别获取建议保质期
+export function getDefaultShelfLife(category) {
+  return CATEGORY_SHELF_LIFE_DAYS[category] ?? DEFAULT_SHELF_LIFE_DAYS
+}
+
 // 挑战完成奖励积分
 export const CHALLENGE_POINTS = 10

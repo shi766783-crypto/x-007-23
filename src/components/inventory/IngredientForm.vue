@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, computed } from 'vue'
-import { CATEGORIES, UNITS, LOCATIONS } from '@/constants'
+import { CATEGORIES, UNITS, LOCATIONS, getDefaultShelfLife } from '@/constants'
 import { toDateKey, expiryDateKey } from '@/utils/date'
 import PhotoUpload from '@/components/common/PhotoUpload.vue'
 
@@ -15,11 +15,30 @@ const form = reactive({
   quantity: props.initial?.quantity ?? 1,
   unit: props.initial?.unit || '个',
   purchaseDate: props.initial?.purchaseDate || toDateKey(),
-  shelfLifeDays: props.initial?.shelfLifeDays ?? 7,
+  shelfLifeDays: props.initial?.shelfLifeDays ?? getDefaultShelfLife(props.initial?.category || '蔬菜'),
   location: props.initial?.location || '冷藏',
   note: props.initial?.note || '',
   photo: props.initial?.photo || '',
 })
+
+// 保质期是否为用户自己定的值：编辑已有食材时视为已自定义，切换类别不覆盖
+const shelfLifeTouched = props.initial != null
+
+const suggestedDays = computed(() => getDefaultShelfLife(form.category))
+const usingSuggestion = computed(() => Number(form.shelfLifeDays) === suggestedDays.value)
+
+function onCategoryChange() {
+  if (!shelfLifeTouched) form.shelfLifeDays = suggestedDays.value
+}
+
+function onShelfLifeInput() {
+  shelfLifeTouched = true
+}
+
+function applySuggestion() {
+  form.shelfLifeDays = suggestedDays.value
+  shelfLifeTouched = false
+}
 
 const expiry = computed(() =>
   form.purchaseDate ? expiryDateKey(form.purchaseDate, Number(form.shelfLifeDays)) : '',
@@ -46,7 +65,7 @@ function submit() {
     <div class="row">
       <div class="field">
         <label>类别</label>
-        <select v-model="form.category">
+        <select v-model="form.category" @change="onCategoryChange">
           <option v-for="c in CATEGORIES" :key="c" :value="c">{{ c }}</option>
         </select>
       </div>
@@ -78,7 +97,19 @@ function submit() {
       </div>
       <div class="field">
         <label>保质期（天）</label>
-        <input v-model.number="form.shelfLifeDays" type="number" min="1" />
+        <input
+          v-model.number="form.shelfLifeDays"
+          type="number"
+          min="1"
+          @input="onShelfLifeInput"
+        />
+        <div class="hint">
+          <template v-if="usingSuggestion">{{ form.category }}建议 {{ suggestedDays }} 天</template>
+          <template v-else>
+            {{ form.category }}建议 {{ suggestedDays }} 天 ·
+            <button type="button" class="link-btn" @click="applySuggestion">采用建议</button>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -147,6 +178,21 @@ textarea:focus {
   border-radius: 8px;
   color: var(--warn);
   font-weight: 600;
+}
+.hint {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+}
+.link-btn:hover {
+  text-decoration: underline;
 }
 .actions {
   display: flex;
